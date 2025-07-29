@@ -3,11 +3,13 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<title>관리자 페이지</title>
+<title>관리자 페이지 (주소 기반)</title>
 <style>
 body {font-family:Arial,sans-serif; padding:20px;}
 input, button {margin:5px; padding:8px;}
+#preview-map {width:100%; height:300px; margin-top:10px; border:1px solid #ccc;}
 </style>
+<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=4db060e7e42ce3f220a75d3e778000e6&libraries=services"></script>
 </head>
 <body>
 <h1>소비쿠폰 관리자</h1>
@@ -24,8 +26,8 @@ input, button {margin:5px; padding:8px;}
 <input type="text" id="store-address" placeholder="주소">
 <input type="text" id="store-phone" placeholder="전화번호">
 <select id="store-category"></select>
-<input type="number" id="store-lat" placeholder="위도" step="0.0001">
-<input type="number" id="store-lng" placeholder="경도" step="0.0001">
+<button onclick="previewLocation()">위치 확인</button>
+<div id="preview-map"></div>
 <button onclick="addStore()">매장 추가</button>
 <hr>
 <h2>현재 매장 목록</h2>
@@ -36,6 +38,7 @@ let path = 'data.json';
 let branch = 'main';
 let token = '';
 let data = {};
+let previewMap, geocoder, previewMarker;
 
 function githubHeaders() {
     return { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" };
@@ -50,6 +53,7 @@ async function loadData() {
     renderCategories();
     renderStores();
     populateCategorySelect();
+    initPreviewMap();
 }
 
 function renderCategories() {
@@ -99,14 +103,44 @@ function addCategory() {
     }
 }
 
+function initPreviewMap() {
+    geocoder = new kakao.maps.services.Geocoder();
+    previewMap = new kakao.maps.Map(document.getElementById('preview-map'), {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 5
+    });
+    previewMarker = new kakao.maps.Marker();
+}
+
+function previewLocation() {
+    let address = document.getElementById('store-address').value;
+    if(!address) { alert("주소를 입력하세요."); return; }
+    geocoder.addressSearch(address, function(result, status) {
+        if (status === kakao.maps.services.Status.OK) {
+            let coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+            previewMap.setCenter(coords);
+            previewMarker.setPosition(coords);
+            previewMarker.setMap(previewMap);
+            previewMarker.lat = parseFloat(result[0].y);
+            previewMarker.lng = parseFloat(result[0].x);
+        } else {
+            alert("주소를 찾을 수 없습니다.");
+        }
+    });
+}
+
 function addStore() {
+    if(!previewMarker.lat || !previewMarker.lng) {
+        alert("먼저 '위치 확인'을 통해 좌표를 확인하세요.");
+        return;
+    }
     let store = {
         "카테고리": document.getElementById('store-category').value,
         "이름": document.getElementById('store-name').value,
         "주소": document.getElementById('store-address').value,
         "전화": document.getElementById('store-phone').value || "없음",
-        "위도": parseFloat(document.getElementById('store-lat').value),
-        "경도": parseFloat(document.getElementById('store-lng').value)
+        "위도": previewMarker.lat,
+        "경도": previewMarker.lng
     };
     data.stores.push(store);
     saveData();
