@@ -2,6 +2,7 @@
 let map;
 let positions = [];
 let markers = [];
+let currentCategory = '';
 
 function initMap() {
     kakao.maps.load(function() {
@@ -28,27 +29,28 @@ function displayMarkers() {
     let list = document.getElementById('list');
     list.innerHTML = '';
     positions.forEach(place => {
-        let marker = new kakao.maps.Marker({
-            map: map,
-            position: new kakao.maps.LatLng(place.lat, place.lng)
-        });
-        kakao.maps.event.addListener(marker, 'click', function() {
-            alert(place.name + "\n" + place.address + "\n전화: " + place.phone);
-        });
-        markers.push(marker);
-        list.innerHTML += `<div class='list-item'><b>${place.category}</b> - ${place.name}<br>${place.address} <a href='tel:${place.phone}'>전화</a></div>`;
+        if (currentCategory === '' || place.카테고리 === currentCategory) {
+            let marker = new kakao.maps.Marker({
+                map: map,
+                position: new kakao.maps.LatLng(place.위도, place.경도)
+            });
+            kakao.maps.event.addListener(marker, 'click', function() {
+                alert(place.이름 + "\n" + place.주소 + "\n전화: " + place.전화);
+            });
+            markers.push(marker);
+            list.innerHTML += `<div class='list-item'><b>${place.카테고리}</b> - ${place.이름}<br>${place.주소}<br>☎ ${place.전화 !== '없음' ? `<a href='tel:${place.전화}'>${place.전화}</a>` : '없음'}</div>`;
+        }
     });
 }
 
 function searchPlaces() {
-    let category = document.getElementById('category').value;
     let keyword = document.getElementById('keyword').value;
     fetch('data.json')
         .then(response => response.json())
         .then(data => {
             positions = data.filter(p =>
-                (category === '' || p.category === category) &&
-                (p.name.includes(keyword) || p.address.includes(keyword))
+                (currentCategory === '' || p.카테고리 === currentCategory) &&
+                (p.이름.includes(keyword) || p.주소.includes(keyword))
             );
             displayMarkers();
         });
@@ -63,6 +65,11 @@ function moveToCurrentLocation() {
     } else {
         alert("위치 정보를 사용할 수 없습니다.");
     }
+}
+
+function filterCategory(category) {
+    currentCategory = category;
+    loadData();
 }
 
 window.onload = initMap;
