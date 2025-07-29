@@ -1,0 +1,135 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>관리자 페이지</title>
+<style>
+body {font-family:Arial,sans-serif; padding:20px;}
+input, button {margin:5px; padding:8px;}
+</style>
+</head>
+<body>
+<h1>소비쿠폰 관리자</h1>
+<label>깃허브 토큰: <input type="password" id="token"></label>
+<button onclick="loadData()">DB 불러오기</button>
+<hr>
+<h2>카테고리 관리</h2>
+<ul id="category-list"></ul>
+<input type="text" id="new-category" placeholder="새 카테고리">
+<button onclick="addCategory()">추가</button>
+<hr>
+<h2>매장 추가</h2>
+<input type="text" id="store-name" placeholder="매장명">
+<input type="text" id="store-address" placeholder="주소">
+<input type="text" id="store-phone" placeholder="전화번호">
+<select id="store-category"></select>
+<input type="number" id="store-lat" placeholder="위도" step="0.0001">
+<input type="number" id="store-lng" placeholder="경도" step="0.0001">
+<button onclick="addStore()">매장 추가</button>
+<hr>
+<h2>현재 매장 목록</h2>
+<ul id="store-list"></ul>
+<script>
+let repo = 'smbacksj.github.io';
+let path = 'data.json';
+let branch = 'main';
+let token = '';
+let data = {};
+
+function githubHeaders() {
+    return { "Authorization": "Bearer " + token, "Accept": "application/vnd.github+json" };
+}
+
+async function loadData() {
+    token = document.getElementById('token').value;
+    let res = await fetch('https://api.github.com/repos/smbacksj/' + repo + '/contents/' + path, { headers: githubHeaders() });
+    let json = await res.json();
+    let content = atob(json.content);
+    data = JSON.parse(content);
+    renderCategories();
+    renderStores();
+    populateCategorySelect();
+}
+
+function renderCategories() {
+    const list = document.getElementById('category-list');
+    list.innerHTML = '';
+    data.categories.forEach((cat, i) => {
+        let li = document.createElement('li');
+        li.textContent = cat + ' ';
+        let btn = document.createElement('button');
+        btn.textContent = '삭제';
+        btn.onclick = () => { data.categories.splice(i,1); saveData(); };
+        li.appendChild(btn);
+        list.appendChild(li);
+    });
+}
+
+function renderStores() {
+    const list = document.getElementById('store-list');
+    list.innerHTML = '';
+    data.stores.forEach((store, i) => {
+        let li = document.createElement('li');
+        li.textContent = store.이름 + ' (' + store.카테고리 + ') ';
+        let btn = document.createElement('button');
+        btn.textContent = '삭제';
+        btn.onclick = () => { data.stores.splice(i,1); saveData(); };
+        li.appendChild(btn);
+        list.appendChild(li);
+    });
+}
+
+function populateCategorySelect() {
+    const select = document.getElementById('store-category');
+    select.innerHTML = '';
+    data.categories.forEach(cat => {
+        let option = document.createElement('option');
+        option.value = cat;
+        option.textContent = cat;
+        select.appendChild(option);
+    });
+}
+
+function addCategory() {
+    let cat = document.getElementById('new-category').value;
+    if(cat && !data.categories.includes(cat)) {
+        data.categories.push(cat);
+        saveData();
+    }
+}
+
+function addStore() {
+    let store = {
+        "카테고리": document.getElementById('store-category').value,
+        "이름": document.getElementById('store-name').value,
+        "주소": document.getElementById('store-address').value,
+        "전화": document.getElementById('store-phone').value || "없음",
+        "위도": parseFloat(document.getElementById('store-lat').value),
+        "경도": parseFloat(document.getElementById('store-lng').value)
+    };
+    data.stores.push(store);
+    saveData();
+}
+
+async function saveData() {
+    let res = await fetch('https://api.github.com/repos/smbacksj/' + repo + '/contents/' + path, { headers: githubHeaders() });
+    let json = await res.json();
+    let sha = json.sha;
+    let updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    await fetch('https://api.github.com/repos/smbacksj/' + repo + '/contents/' + path, {
+        method: 'PUT',
+        headers: githubHeaders(),
+        body: JSON.stringify({
+            message: 'Update data.json via admin page',
+            content: updatedContent,
+            sha: sha,
+            branch: branch
+        })
+    });
+    alert('저장되었습니다!');
+    loadData();
+}
+</script>
+</body>
+</html>

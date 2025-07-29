@@ -18,9 +18,25 @@ function loadData() {
     fetch('data.json')
         .then(response => response.json())
         .then(data => {
-            positions = data;
+            positions = data.stores;
+            renderCategoryButtons(data.categories);
             displayMarkers();
         });
+}
+
+function renderCategoryButtons(categories) {
+    const container = document.getElementById('category-buttons');
+    container.innerHTML = '';
+    const allBtn = document.createElement('button');
+    allBtn.innerText = '전체';
+    allBtn.onclick = () => filterCategory('');
+    container.appendChild(allBtn);
+    categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.innerText = cat;
+        btn.onclick = () => filterCategory(cat);
+        container.appendChild(btn);
+    });
 }
 
 function displayMarkers() {
@@ -48,7 +64,7 @@ function searchPlaces() {
     fetch('data.json')
         .then(response => response.json())
         .then(data => {
-            positions = data.filter(p =>
+            positions = data.stores.filter(p =>
                 (currentCategory === '' || p.카테고리 === currentCategory) &&
                 (p.이름.includes(keyword) || p.주소.includes(keyword))
             );
